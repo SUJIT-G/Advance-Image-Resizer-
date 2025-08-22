@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Social Media Image Resizer – OmniToolAZ</title>
+  <meta name="description" content="Resize, crop, and download images for Instagram, YouTube, Facebook, X (Twitter), Pinterest, LinkedIn—100% client-side.">
+  <style>
+    :root{--bg:#0f172a;--panel:#111827;--muted:#94a3b8;--text:#e5e7eb;--accent:#22d3ee;--accent2:#4ade80;--danger:#ef4444}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:linear-gradient(180deg,#0b1220,#0f172a 40%,#0b1220);color:var(--text)}
+    header{padding:20px 16px;text-align:center}
+    header h1{margin:0 0 4px;font-size:clamp(20px,3vw,28px)}
+    header p{margin:0;color:var(--muted)}
+    .wrap{max-width:1100px;margin:20px auto;padding:0 16px;display:grid;grid-template-columns:380px 1fr;gap:16px}
+    @media (max-width:980px){.wrap{grid-template-columns:1fr}}
+    .card{background:rgba(17,24,39,.7);backdrop-filter:blur(6px);border:1px solid rgba(148,163,184,.15);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+    .panel{padding:16px 16px}
+    .panel h2{margin:0 0 10px;font-size:18px}
+    .row{display:flex;gap:10px;align-items:center;margin:10px 0}
+    .row label{min-width:120px;color:var(--muted)}
+    .row input[type="number"],.row select,.row input[type="text"]{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(148,163,184,.25);background:#0b1220;color:var(--text)}
+    .row input[type="range"]{width:100%}
+    .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(148,163,184,.25);background:#0b1220;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer}
+    .btn:hover{border-color:var(--accent)}
+    .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#0b1220;border:none}
+    .btn.danger{border-color:var(--danger);color:#fecaca}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    .hint{color:var(--muted);font-size:12px}
+    .canvasWrap{position:relative;aspect-ratio:16/9;background:#0b1220;border-radius:14px;overflow:hidden;border:1px dashed rgba(148,163,184,.35)}
+    #stage{width:100%;height:100%;display:block;background:#0b1220}
+    .overlay{position:absolute;inset:0;pointer-events:none}
+    .badge{display:inline-block;padding:4px 10px;border-radius:999px;background:#0b1220;border:1px solid rgba(148,163,184,.25);color:var(--muted);font-size:12px}
+    .dropzone{border:2px dashed rgba(148,163,184,.45);border-radius:14px;padding:14px;text-align:center}
+    .footer{padding:14px;text-align:center;color:var(--muted);font-size:12px}
+    .safeToggle{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Social Media Image Resizer</h1>
+    <p>Resize • Crop • Download — all in your browser. No upload.</p>
+  </header>
+  <main class="wrap">
+    <!-- Controls -->
+    <section class="card panel">
+      <h2>1) Source image</h2>
+      <div class="dropzone" id="dropzone">
+        <p><strong>Drop image</strong> here or <label class="btn" for="file">Browse</label></p>
+        <input id="file" type="file" accept="image/*" hidden>
+        <p class="hint">Tip: You can also paste (Ctrl/Cmd+V) a copied image.</p>
+      </div>
+
+      <h2 style="margin-top:18px">2) Output preset</h2>
+      <div class="row">
+        <label for="preset">Platform</label>
+        <select id="preset"></select>
+      </div>
+      <div class="grid">
+        <div class="row"><label>Width</label><input id="w" type="number" min="1" value="1280"></div>
+        <div class="row"><label>Height</label><input id="h" type="number" min="1" value="720"></div>
+      </div>
+      <div class="row"><span class="badge" id="ratioBadge">Aspect 16:9</span></div>
+
+      <h2 style="margin-top:18px">3) Fit & position</h2>
+      <div class="row">
+        <label for="fit">Fit</label>
+        <select id="fit">
+          <option value="cover">Cover (crop)</option>
+          <option value="contain">Contain (letterbox)</option>
+        </select>
+      </div>
+      <div class="grid">
+        <div class="row"><label>X offset</label><input id="offx" type="range" min="-100" max="100" value="0"></div>
+        <div class="row"><label>Y offset</label><input id="offy" type="range" min="-100" max="100" value="0"></div>
+      </div>
+      <div class="row"><label>Background</label><input id="bg" type="text" value="#0b1220" placeholder="#000000 or rgba(0,0,0,.8)"></div>
+      <div class="safeToggle">
+        <label><input type="checkbox" id="gridToggle" checked> Show 3×3 grid</label>
+        <label><input type="checkbox" id="safeToggle"> Show safe zone</label>
+      </div>
+
+      <h2 style="margin-top:18px">4) Export</h2>
+      <div class="grid">
+        <div class="row"><label>Format</label>
+          <select id="fmt"><option value="image/png">PNG</option><option value="image/jpeg">JPEG</option><option value="image/webp">WEBP</option></select>
+        </div>
+        <div class="row"><label>Quality</label><input id="q" type="range" min="0.5" max="1" step="0.01" value="0.92"></div>
+      </div>
+      <div class="row" style="gap:8px">
+        <button class="btn primary" id="downloadBtn">Download</button>
+        <button class="btn" id="copyBtn">Copy to clipboard</button>
+        <button class="btn danger" id="clearBtn">Clear</button>
+      </div>
+      <p class="hint">All processing happens locally in your browser.</p>
+    </section>
+
+    <!-- Canvas Stage -->
+    <section class="card panel">
+      <div class="canvasWrap" id="canvasWrap">
+        <canvas id="stage"></canvas>
+        <svg class="overlay" id="overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+      </div>
+      <div class="row" style="justify-content:space-between;margin-top:10px">
+        <span class="badge" id="srcInfo">No image</span>
+        <span class="badge" id="outInfo">Output: 1280 × 720</span>
+      </div>
+    </section>
+  </main>
+  <div class="footer">© <span id="year"></span> OmniToolAZ • Built with ♥ — Client‑side only</div>
+
+  <script>
+  // ====== Presets ======
+  const PRESETS = [
+    {group:'Instagram', name:'Instagram Post (1080×1080)', w:1080, h:1080, safe:{x:0.05,y:0.05,w:0.9,h:0.9}},
+    {group:'Instagram', name:'Reel / Story (1080×1920)', w:1080, h:1920, safe:{x:0.07,y:0.12,w:0.86,h:0.76}},
+    {group:'YouTube', name:'YouTube Thumbnail (1280×720)', w:1280, h:720, safe:{x:0.08,y:0.18,w:0.84,h:0.64}},
+    {group:'Facebook', name:'FB Post (1200×630)', w:1200, h:630, safe:{x:0.06,y:0.12,w:0.88,h:0.76}},
+    {group:'X / Twitter', name:'Post (1600×900)', w:1600, h:900, safe:{x:0.06,y:0.12,w:0.88,h:0.76}},
+    {group:'LinkedIn', name:'Post (1200×627)', w:1200, h:627, safe:{x:0.06,y:0.12,w:0.88,h:0.76}},
+    {group:'Pinterest', name:'Pin (1000×1500)', w:1000, h:1500, safe:{x:0.07,y:0.12,w:0.86,h:0.76}},
+    {group:'Custom', name:'Custom (set below)', w:1280, h:720}
+  ];
+
+  // ====== State ======
+  const els = {
+    preset: document.getElementById('preset'), w:document.getElementById('w'), h:document.getElementById('h'),
+    ratioBadge: document.getElementById('ratioBadge'), fmt:document.getElementById('fmt'), q:document.getElementById('q'),
+    fit:document.getElementById('fit'), offx:document.getElementById('offx'), offy:document.getElementById('offy'),
+    bg:document.getElementById('bg'), overlay:document.getElementById('overlay'), stage:document.getElementById('stage'),
+    dropzone:document.getElementById('dropzone'), srcInfo:document.getElementById('srcInfo'), outInfo:document.getElementById('outInfo'),
+    gridToggle:document.getElementById('gridToggle'), safeToggle:document.getElementById('safeToggle'), downloadBtn:document.getElementById('downloadBtn'),
+    copyBtn:document.getElementById('copyBtn'), clearBtn:document.getElementById('clearBtn'), year:document.getElementById('year')
+  };
+  els.year.textContent = new Date().getFullYear();
+
+  const ctx = els.stage.getContext('2d');
+  let img = null; // Image object
+  let imgBitmap = null;
+
+  // ====== Utils ======
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+  const ratio = (w,h) => (h? (w/h): 0);
+  const fmtRatio = r => {
+    if(!isFinite(r)||r<=0) return '-';
+    const gcd = (a,b)=>b?gcd(b,a%b):a; let n = Math.round(r*1000), d = 1000; const g=gcd(n,d); n/=g; d/=g; return `${n}:${d}`;
+  }
+
+  // Fill preset dropdown
+  (function initPresets(){
+    let group = '';
+    PRESETS.forEach((p,i)=>{
+      if(p.group!==group){
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = p.group; optgroup.dataset.group = p.group; els.preset.appendChild(optgroup); group = p.group;
+      }
+      const og = [...els.preset.querySelectorAll('optgroup')].find(o=>o.label===p.group);
+      const opt = document.createElement('option');
+      opt.value = i; opt.textContent = p.name; og.appendChild(opt);
+    });
+    els.preset.value = 2; // YouTube default
+    applyPreset();
+  })();
+
+  function applyPreset(){
+    const p = PRESETS[+els.preset.value];
+    els.w.value = p.w; els.h.value = p.h; updateRatioBadge(); draw();
+  }
+
+  function updateRatioBadge(){
+    const w = +els.w.value, h = +els.h.value; els.ratioBadge.textContent = `Aspect ${fmtRatio(w/h)}`;
+    els.outInfo.textContent = `Output: ${w} × ${h}`;
+    // resize the canvas container aspect
+    const wrap = document.getElementById('canvasWrap');
+    wrap.style.aspectRatio = `${w}/${h}`;
+    els.stage.width = w; els.stage.height = h; draw();
+    drawOverlay();
+  }
+
+  function drawOverlay(){
+    const showGrid = els.gridToggle.checked; const showSafe = els.safeToggle.checked; const svg = els.overlay; const w=100,h=100;
+    let content = '';
+    if(showGrid){
+      // 3x3 grid lines
+      for(let i=1;i<3;i++){
+        const x = i*(w/3); const y = i*(h/3);
+        content += `<line x1="${x}" y1="0" x2="${x}" y2="${h}" stroke="rgba(255,255,255,.35)" stroke-width=".5"/>`;
+        content += `<line x1="0" y1="${y}" x2="${w}" y2="${y}" stroke="rgba(255,255,255,.35)" stroke-width=".5"/>`;
+      }
+    }
+    if(showSafe){
+      const p = PRESETS[+els.preset.value];
+      if(p.safe){
+        const {x,y,w:sw,h:sh} = p.safe;
+        content += `<rect x="${x*100}" y="${y*100}" width="${sw*100}" height="${sh*100}" rx="2" ry="2" fill="none" stroke="rgba(34,211,238,.9)" stroke-width=".8"/>`;
+      }
+    }
+    svg.innerHTML = content;
+  }
+
+  // ====== Image loading ======
+  async function loadFile(file){
+    if(!file) return;
+    const url = URL.createObjectURL(file);
+    imgBitmap = await createImageBitmap(file);
+    img = new Image();
+    img.onload = ()=>{ URL.revokeObjectURL(url); updateSrcInfo(); draw(); };
+    img.src = url;
+  }
+
+  function updateSrcInfo(){
+    if(img) els.srcInfo.textContent = `Source: ${img.naturalWidth} × ${img.naturalHeight}`; else els.srcInfo.textContent = 'No image';
+  }
+
+  // Drag & drop
+  els.dropzone.addEventListener('dragover', e=>{e.preventDefault(); els.dropzone.style.borderColor='var(--accent)'});
+  els.dropzone.addEventListener('dragleave', e=>{els.dropzone.style.borderColor='rgba(148,163,184,.45)'});
+  els.dropzone.addEventListener('drop', e=>{e.preventDefault(); els.dropzone.style.borderColor='rgba(148,163,184,.45)'; loadFile(e.dataTransfer.files[0]);});
+  document.getElementById('file').addEventListener('change', e=> loadFile(e.target.files[0]));
+
+  // Paste from clipboard
+  document.addEventListener('paste', async (e)=>{
+    const item = [...e.clipboardData.items].find(i=>i.type.startsWith('image/'));
+    if(item){ loadFile(item.getAsFile()); }
+  });
+
+  // ====== Rendering ======
+  function draw(){
+    const w = +els.w.value, h = +els.h.value; if(!w||!h){return}
+    ctx.save();
+    // background
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = els.bg.value || '#000';
+    ctx.fillRect(0,0,w,h);
+
+    if(img){
+      const fit = els.fit.value;
+      const sx = img.naturalWidth; const sy = img.naturalHeight;
+      const srcRatio = sx/sy; const dstRatio = w/h;
+
+      let dw, dh; // draw size
+      if(fit==='cover'){
+        if(srcRatio>dstRatio){ dh = h; dw = h*srcRatio; }
+        else { dw = w; dh = w/srcRatio; }
+      } else { // contain
+        if(srcRatio>dstRatio){ dw = w; dh = w/srcRatio; }
+        else { dh = h; dw = h*srcRatio; }
+      }
+      // Offsets in px from center
+      const ox = (+els.offx.value/100) * (dw - w)/2 * 2;
+      const oy = (+els.offy.value/100) * (dh - h)/2 * 2;
+      const dx = (w - dw)/2 + ox; const dy = (h - dh)/2 + oy;
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, dx, dy, dw, dh);
+    }
+    ctx.restore();
+  }
+
+  // ====== Events ======
+  ['input','change'].forEach(ev=>{
+    els.w.addEventListener(ev, updateRatioBadge);
+    els.h.addEventListener(ev, updateRatioBadge);
+    els.fit.addEventListener(ev, draw);
+    els.offx.addEventListener(ev, draw);
+    els.offy.addEventListener(ev, draw);
+    els.bg.addEventListener(ev, draw);
+    els.preset.addEventListener(ev, ()=>{applyPreset(); drawOverlay();});
+    els.gridToggle.addEventListener(ev, drawOverlay);
+    els.safeToggle.addEventListener(ev, drawOverlay);
+  });
+
+  // ====== Export ======
+  document.getElementById('downloadBtn').addEventListener('click', ()=>{
+    const mime = els.fmt.value; const quality = +els.q.value;
+    els.stage.toBlob((blob)=>{
+      const a = document.createElement('a');
+      const p = PRESETS[+els.preset.value];
+      const name = (p?.name||'Image').replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+      a.href = URL.createObjectURL(blob);
+      a.download = `${name}-${els.w.value}x${els.h.value}.${mime.split('/')[1].replace('jpeg','jpg')}`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+    }, mime, quality);
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', async ()=>{
+    els.stage.toBlob(async (blob)=>{
+      try {
+        await navigator.clipboard.write([new ClipboardItem({[blob.type]: blob})]);
+        toast('Copied to clipboard');
+      } catch(e){ toast('Clipboard not permitted'); }
+    }, els.fmt.value, +els.q.value);
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', ()=>{ img=null; imgBitmap=null; updateSrcInfo(); draw(); });
+
+  function toast(msg){
+    const t = document.createElement('div');
+    t.textContent = msg; t.style.cssText = 'position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#0b1220;color:#e5e7eb;border:1px solid rgba(148,163,184,.25);padding:10px 14px;border-radius:999px;z-index:9999;box-shadow:0 10px 20px rgba(0,0,0,.4)';
+    document.body.appendChild(t); setTimeout(()=>t.remove(), 1600);
+  }
+
+  // Initial overlay
+  drawOverlay();
+  updateRatioBadge();
+  draw();
+  </script>
+</body>
+</html>
